@@ -1,6 +1,7 @@
 package br.edu.pi.smarthome.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -11,8 +12,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
@@ -38,14 +39,18 @@ import br.edu.pi.smarthome.model.MqttSnapshot
 import br.edu.pi.smarthome.model.SmartRecord
 import kotlinx.coroutines.launch
 
-private val Green = Color(0xFF176B4D)
-private val SoftGreen = Color(0xFFEAF3ED)
-private val Ink = Color(0xFF17211B)
+private val Accent = Color(0xFF4F46E5)
+private val AccentSoft = Color(0xFFEDEBFF)
+private val Cyan = Color(0xFF0891B2)
+private val Amber = Color(0xFFF59E0B)
+private val Ink = Color(0xFF172033)
+private val Muted = Color(0xFF667085)
+private val AppBg = Color(0xFFF7F8FB)
 
 @Composable
 fun App() {
     MaterialTheme {
-        Surface(modifier = Modifier.fillMaxSize(), color = Color(0xFFF6F7F4)) {
+        Surface(modifier = Modifier.fillMaxSize(), color = AppBg) {
             SmartHomeScreen()
         }
     }
@@ -75,6 +80,7 @@ private fun SmartHomeScreen() {
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item { Header(mqtt) }
+        item { InsightsPanel() }
         item {
             CrudSelector(
                 selected = selected,
@@ -107,11 +113,62 @@ private fun SmartHomeScreen() {
 
 @Composable
 private fun Header(mqtt: MqttSnapshot?) {
-    Card(colors = CardDefaults.cardColors(containerColor = Green)) {
+    Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF111827))) {
         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("PI Smart Home", color = Color.White, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
             Text("14 CRUDs mockados, API REST preparada e painel IoT via MQTT.", color = Color.White)
-            Text("Broker: ${mqtt?.broker ?: "Mosquitto"} | Topico: ${mqtt?.topic ?: "home/+/telemetry"}", color = Color.White)
+            Text("Broker: ${mqtt?.broker ?: "Mosquitto"} | Topico: ${mqtt?.topic ?: "home/+/telemetry"}", color = Color(0xFFD7DDF0))
+        }
+    }
+}
+
+@Composable
+private fun InsightsPanel() {
+    val modules = CrudCatalog.items.groupBy { it.module }.mapValues { it.value.size }
+    Card(colors = CardDefaults.cardColors(containerColor = Color.White)) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("Visao geral", fontWeight = FontWeight.Bold, color = Ink)
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                MetricCard("CRUDs", "14", Accent, Modifier.weight(1f))
+                MetricCard("Modulos", modules.size.toString(), Cyan, Modifier.weight(1f))
+                MetricCard("MQTT", "1", Amber, Modifier.weight(1f))
+            }
+            modules.forEach { (module, count) ->
+                ChartRow(label = module, count = count, max = 14)
+            }
+        }
+    }
+}
+
+@Composable
+private fun MetricCard(label: String, value: String, color: Color, modifier: Modifier = Modifier) {
+    Card(colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.12f)), modifier = modifier) {
+        Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(value, color = color, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
+            Text(label, color = Muted)
+        }
+    }
+}
+
+@Composable
+private fun ChartRow(label: String, count: Int, max: Int) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(label, color = Ink, fontWeight = FontWeight.Bold)
+            Text("$count CRUDs", color = Muted)
+        }
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(10.dp)
+                .background(Color(0xFFE5E9F2))
+        ) {
+            Box(
+                Modifier
+                    .fillMaxWidth(count / max.toFloat())
+                    .height(10.dp)
+                    .background(Accent)
+            )
         }
     }
 }
@@ -120,9 +177,9 @@ private fun Header(mqtt: MqttSnapshot?) {
 private fun CrudSelector(selected: CrudSpec, onSelect: (CrudSpec) -> Unit) {
     Card(colors = CardDefaults.cardColors(containerColor = Color.White)) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("CRUDs por integrante", fontWeight = FontWeight.Bold, color = Ink)
+            Text("Modulos do sistema", fontWeight = FontWeight.Bold, color = Ink)
             CrudCatalog.items.forEach { spec ->
-                val bg = if (spec.key == selected.key) SoftGreen else Color.Transparent
+                val bg = if (spec.key == selected.key) AccentSoft else Color.Transparent
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -132,7 +189,7 @@ private fun CrudSelector(selected: CrudSpec, onSelect: (CrudSpec) -> Unit) {
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(spec.label, color = Ink)
-                    Text(spec.owner, color = Green, fontWeight = FontWeight.Bold)
+                    Text(spec.module, color = Accent, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -151,7 +208,7 @@ private fun CrudPanel(
     Card(colors = CardDefaults.cardColors(containerColor = Color.White)) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("CRUD ${spec.label}", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Text("Endpoint: ${spec.endpoint}", color = Green, fontWeight = FontWeight.Bold)
+            Text("Endpoint: ${spec.endpoint}", color = Accent, fontWeight = FontWeight.Bold)
 
             spec.fields.forEach { field ->
                 OutlinedTextField(
@@ -168,7 +225,8 @@ private fun CrudPanel(
                     onCreate(spec.fields.associate { it.name to form[it.name].orEmpty().ifBlank { it.label } })
                     form.clear()
                 },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = Accent)
             ) {
                 Text("Salvar mock")
             }
@@ -184,13 +242,16 @@ private fun CrudPanel(
 
 @Composable
 private fun RecordCard(spec: CrudSpec, record: SmartRecord, onDelete: (Int) -> Unit) {
-    Card(colors = CardDefaults.cardColors(containerColor = SoftGreen)) {
+    Card(colors = CardDefaults.cardColors(containerColor = AccentSoft)) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text("#${record.id}", color = Green, fontWeight = FontWeight.Bold)
+            Text("#${record.id}", color = Accent, fontWeight = FontWeight.Bold)
             spec.fields.forEach { field ->
                 Text("${field.label}: ${record.values[field.name].orEmpty()}", color = Ink)
             }
-            Button(onClick = { onDelete(record.id) }) {
+            Button(
+                onClick = { onDelete(record.id) },
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626))
+            ) {
                 Text("Excluir")
             }
         }

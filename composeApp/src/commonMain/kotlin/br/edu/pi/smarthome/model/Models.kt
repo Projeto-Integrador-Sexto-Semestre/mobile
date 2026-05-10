@@ -9,7 +9,7 @@ data class FieldSpec(
 data class CrudSpec(
     val key: String,
     val label: String,
-    val owner: String,
+    val module: String,
     val endpoint: String,
     val fields: List<FieldSpec>
 )
